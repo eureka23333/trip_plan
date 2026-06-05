@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2026年6月行程规划</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        /* 核心变量：通过 data-theme 属性进行一键无缝切换 */
+        :root[data-theme="light"] {
+            --beijing-zhuse: #faf8f5;     /* 温暖柔和的浅米色底 */
+            --beijing-ka-pian: #ffffff;    /* 纯白卡片背景 */
+            --biankuang-yanse: #e6e2dc;   /* 细腻的浅色分割线 */
+            --wenzi-zhutise: #0a7470;     /* 沉稳高级的碧青色 */
+            --wenzi-shense: #2d3130;      /* 深炭黑 */
+            --wenzi-anwen: #7d8280;       /* 辅助说明文字 */
+            --zhuangtai-wancheng: #0a7470;/* 已确认状态 */
+            --zhuangtai-dengdai: #d97706; /* 待办状态 */
+            --kuang-beijing: #f7f6f3;     /* 住宿框背景 */
+            --fuzhi-anniu: #f0ede7;       /* 复制按钮背景 */
+            --fuzhi-anniu-active: #e2ded6;
+        }
+
+        :root[data-theme="dark"] {
+            --beijing-zhuse: #141619;     /* 深邃纯净的夜间黑底 */
+            --beijing-ka-pian: #1d2126;    /* 深色卡片背景 */
+            --biankuang-yanse: #2d3239;   /* 暗色分割线 */
+            --wenzi-zhutise: #00adb5;     /* 科技感的亮青色 */
+            --wenzi-shense: #e0e0e0;      /* 浅灰色文字，夜间不刺眼 */
+            --wenzi-anwen: #888888;       /* 暗色辅助说明 */
+            --zhuangtai-wancheng: #00adb5;
+            --zhuangtai-dengdai: #f39c12;
+            --kuang-beijing: #252a31;     /* 住宿框深色背景 */
+            --fuzhi-anniu: #2c323b;       /* 复制按钮深色背景 */
+            --fuzhi-anniu-active: #373f4a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            background-color: var(--beijing-zhuse);
+            color: var(--wenzi-shense);
+            padding: 16px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .rongqi {
+            max-width: 480px; /* 锁定标准的黄金手机视口宽度 */
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* 悬浮切换模式按钮 */
+        .moshi-qiehuan {
+            position: absolute;
+            top: 2px;
+            right: 0;
+            background: var(--beijing-ka-pian);
+            border: 1px solid var(--biankuang-yanse);
+            color: var(--wenzi-zhutise);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .moshi-qiehuan:active {
+            background: var(--fuzhi-anniu);
+        }
+
+        /* 头部区域 */
+        .toubu {
+            border-bottom: 2px solid var(--wenzi-shense);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            padding-right: 90px; /* 规避悬浮按钮 */
+        }
+
+        .biaoti {
+            font-size: 22px;
+            color: var(--wenzi-zhutise);
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        /* 模块大标题 */
+        .mokuai-biaoti {
+            font-size: 18px;
+            color: var(--wenzi-zhutise);
+            font-weight: 700;
+            margin: 25px 0 12px 0;
+            padding-left: 8px;
+            border-left: 4px solid var(--wenzi-zhutise);
+        }
+
+        /* 纯白卡片通用样式 */
+        .ka-pian {
+            background: var(--beijing-ka-pian);
+            border: 1px solid var(--biankuang-yanse);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            margin-bottom: 16px;
+        }
+
+        /* 规范列表说明 */
+        .guifan-liebiao {
+            padding-left: 18px;
+            font-size: 14px;
+            color: var(--wenzi-shense);
+        }
+        .guifan-liebiao li {
+            margin-bottom: 8px;
+        }
+
+        /* 地图容器 */
+        #ditu-rongqi {
+            width: 100%;
+            height: 220px;
+            border-radius: 10px;
+            border: 1px solid var(--biankuang-yanse);
+        }
+
+        /* 时间轴卡片定制 */
+        .riqi-huizhang {
+            display: inline-block;
+            background: var(--wenzi-zhutise);
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: bold;
+            padding: 3px 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .hangcheng-luxian {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--wenzi-shense);
+        }
+
+        .hangcheng-xiangqing {
+            font-size: 15px;
+            color: var(--wenzi-shense);
+            opacity: 0.9;
+            margin-bottom: 12px;
+            text-align: justify;
+        }
+
+        /* 住宿凭证框 */
+        .zhusu-kuang {
+            background: var(--kuang-beijing);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 14px;
+            border-left: 3px solid var(--wenzi-zhutise);
+        }
+
+        /* 手机端大面积复制按钮 */
+        .anniu-fuzhi {
+            display: block;
+            width: 100%;
+            background: var(--fuzhi-anniu);
+            border: none;
+            color: var(--wenzi-zhutise);
+            font-weight: 600;
+            font-size: 13px;
+            padding: 10px;
+            text-align: center;
+            border-radius: 6px;
+            margin-top: 8px;
+            cursor: pointer;
+        }
+        .anniu-fuzhi:active {
+            background: var(--fuzhi-anniu-active);
+        }
+
+        /* 状态标签 */
+        .zhuangtai-tag {
+            float: right;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .tag-wancheng { color: var(--zhuangtai-wancheng); }
+        .tag-dengdai { color: var(--zhuangtai-dengdai); }
+
+        /* 财务特定样式 */
+        .caiwu-biaoti {
+            font-size: 18px;
+            color: var(--zhuangtai-wancheng);
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-left: 5px;
+            border-left: 4px solid var(--zhuangtai-wancheng);
+        }
+
+        /* 财务账单行样式 */
+        .zhangdan-xiangmu {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 12px 0;
+            border-bottom: 1px dashed var(--biankuang-yanse);
+        }
+        .zhangdan-xiangmu:last-child {
+            border-bottom: none;
+        }
+
+        .zhangdan-lei {
+            font-size: 12px;
+            background: var(--fuzhi-anniu);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--wenzi-zhutise);
+            margin-right: 6px;
+            font-weight: bold;
+        }
+
+        .zhangdan-mingcheng {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--wenzi-shense);
+        }
+
+        .zhangdan-beizhu {
+            font-size: 13px;
+            color: var(--wenzi-anwen);
+            margin-top: 2px;
+            line-height: 1.4;
+        }
+
+        .zhangdan-jine {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--wenzi-shense);
+            white-space: nowrap;
+            margin-left: 10px;
+        }
+
+        /* 总计卡片专属 */
+        .zongji-ka {
+            background: linear-gradient(135deg, var(--wenzi-zhutise), #085956);
+            color: #ffffff;
+            border: none;
+        }
+        .zongji-neirong {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .zongji-wenzi {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        .zongji-jine {
+            font-size: 24px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        /* 地图气泡及样式动态调整 */
+        .leaflet-tooltip {
+            background: var(--beijing-ka-pian) !important;
+            border: 1px solid var(--biankuang-yanse) !important;
+            color: var(--wenzi-shense) !important;
+            font-weight: bold !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+            font-size: 12px !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="rongqi">
+        
+        <button class="moshi-qiehuan" id="themeBtn" onclick="qiehuanMoshi()">🌙 夜间</button>
+
+        <div class="toubu">
+            <div class="biaoti">信息面板</div>
+        </div>
+        
+        <div class="mokuai-biaoti">💡 温馨提示</div>
+        <div class="ka-pian">
+            <ul class="guifan-liebiao">
+                <li><strong>行李控制：</strong>建议使用双肩背包出行，勿携带硬质拉杆箱。</li>
+                <li><strong>饮水规范：</strong>无须自带保温杯或水杯，沿途采取随用随买矿泉水策略。</li>
+                <li><strong>防风防蚊：</strong>海岛夜晚及空调房环境多变，需随身备用薄外套、长裤及透气鞋。</li>
+                <li><strong>财务机制：</strong>本次行程财务明细及各节点预算已全部收录于页面末尾的报表中。</li>
+            </ul>
+        </div>
+        
+        <div class="mokuai-biaoti">🗺️ 可视化路线</div>
+        <div class="ka-pian" style="padding: 10px;">
+            <div id="ditu-rongqi"></div>
+        </div>
+
+        <div class="mokuai-biaoti">📅 结构化日程明细</div>
+        
+        <div class="ka-pian">
+            <span class="zhuangtai-tag tag-wancheng">● 航班已确认</span>
+            <div class="riqi-huizhang">06.11 周四 (第一天)</div>
+            <div class="hangcheng-luxian">长沙 ➔ 宁波</div>
+            <div class="hangcheng-xiangqing">19:40 - 21:20 乘坐海南航空 HU7787 航班，自长沙黄花机场飞抵宁波栎社机场。落地后搭乘地面交通前往市区酒店。</div>
+            <div class="zhusu-kuang">
+                <span style="color:var(--wenzi-anwen)">宿：</span>白玉兰酒店(南站西路199号)
+                <button class="anniu-fuzhi" onclick="fuzhiDizhi('宁波市海曙区南站西路199号')">📋 复制酒店地址</button>
+            </div>
+        </div>
+
+        <div class="ka-pian">
+            <span class="zhuangtai-tag tag-wancheng">● 车船客票已确认</span>
+            <div class="riqi-huizhang">06.12 周五 (第二天)</div>
+            <div class="hangcheng-luxian">宁波 ➔ 枸杞岛</div>
+            <div class="hangcheng-xiangqing">07:05 于宁波南站准时搭乘车船联票大巴出发，直达枸杞岛。预计下午抵达并入住海岛民宿，傍晚在民宿周边集市及沙滩区域自由活动。</div>
+            <div class="zhusu-kuang">
+                <span style="color:var(--wenzi-anwen)">宿：</span>瀚海居(奇观南路133号)
+                <button class="anniu-fuzhi" onclick="fuzhiDizhi('舟山市嵊泗县枸杞乡石浦村奇观南路133号')">📋 复制民宿地址</button>
+            </div>
+        </div>
+
+        <div class="ka-pian">
+            <span class="zhuangtai-tag tag-wancheng">● 住宿已锁定</span>
+            <div class="riqi-huizhang">06.13 周六 (第三天)</div>
+            <div class="hangcheng-luxian">枸杞岛</div>
+            <div class="hangcheng-xiangqing">全天海岛度假，无固定时段捆绑。长途位移依赖当地出租车。自由活动项目视天气调整。</div>
+        </div>
+
+        <div class="ka-pian">
+            <span class="zhuangtai-tag tag-dengdai">▲ 提前7天抢购</span>
+            <div class="riqi-huizhang">06.14 周日 (第四天)</div>
+            <div class="hangcheng-luxian">枸杞岛 ➔ 嵊泗 ➔ 上海</div>
+            <div class="hangcheng-xiangqing">08:55 搭乘轮渡从枸杞岛出发前往嵊泗（泗礁），航程约2小时。随后从泗礁中转，搭乘车船联票前往上海南浦，航程与车程约2.5小时。下午前往同济大学参加毕业典礼，晚间入住杨浦区酒店。</div>
+            <div class="zhusu-kuang">
+                <span style="color:var(--wenzi-anwen)">宿：</span>微凉酒店(四平路1931号)
+                <button class="anniu-fuzhi" onclick="fuzhiDizhi('上海市杨浦区四平路1931号')">📋 复制酒店地址</button>
+            </div>
+        </div>
+
+        <div class="ka-pian">
+            <span class="zhuangtai-tag tag-dengdai">▲ 春餐厅待预约</span>
+            <div class="riqi-huizhang">06.15 周一 (第五天)</div>
+            <div class="hangcheng-luxian">上海</div>
+            <div class="hangcheng-xiangqing">日间安排轻量城市漫步，规避高温。中餐与晚餐计划安排老字号“春餐厅”与回转寿司。注：就餐需提前电话订位。</div>
+        </div>
+
+        <div class="ka-pian">
+            <span class="zhuangtai-tag tag-wancheng">● 返程机票已确认</span>
+            <div class="riqi-huizhang">06.16 周二 (第六天)</div>
+            <div class="hangcheng-luxian">上海 ➔ 长沙</div>
+            <div class="hangcheng-xiangqing">上午前往四行仓库抗战纪念馆进行历史行程参观。下午前往浦东国际机场，16:10 乘坐南方航空 CZ3968 航班返回长沙，旅行结束。</div>
+        </div>
+
+        <div class="caiwu-biaoti">💵 交通与住宿账单明细</div>
+        <div class="ka-pian">
+            
+            <div class="zhangdan-xiangmu">
+                <div>
+                    <div><span class="zhangdan-lei">交通</span><span class="zhangdan-mingcheng">06.11 长沙-宁波 航段</span></div>
+                    <div class="zhangdan-beizhu">海南航空 HU7787 (19:40 - 21:20)，黄花机场-栎社机场。双人经济舱。无餐食。</div>
+                </div>
+                <div class="zhangdan-jine">¥ 900.00</div>
+            </div>
+
+            <div class="zhangdan-xiangmu">
+                <div>
+                    <div><span class="zhangdan-lei">交通</span><span class="zhangdan-mingcheng">06.12 宁波-枸杞岛 直达</span></div>
+                    <div class="zhangdan-beizhu">07:05 宁波南站出发车船联票。大巴与轮渡直达。</div>
+                </div>
+                <div class="zhangdan-jine">¥ 831.00</div>
+            </div>
+
+            <div class="zhangdan-xiangmu">
+                <div>
+                    <div><span class="zhangdan-lei">交通</span><span class="zhangdan-mingcheng">06.14 枸杞岛-嵊泗</span></div>
+                    <div class="zhangdan-beizhu">08:55 发船，航程约2小时。前往嵊泗（泗礁）码头。</div>
+                </div>
+                <div class="zhangdan-jine">¥ 110.00</div>
+            </div>
+
+            <div class="zhangdan-xiangmu">
+                <div>
+                    <div><span class="zhangdan-lei">交通</span><span class="zhangdan-mingcheng">06.14 泗礁-上海南浦</span></div>
+                    <div class="zhangdan-beizhu">车船联票，经泗礁至上海南浦客运站，历时约2.5小时。</div>
+                </div>
+                <div class="zhangdan-jine">¥ 144.00</div>
+            </div>
+
+            <div class="zhangdan-xiangmu">
+                <div>
+                    <div><span class="zhangdan-lei">交通</span><span class="zhangdan-mingcheng">06.16 上海-长沙 航段</span></div>
+                    <div class="zhangdan-beizhu">南方航空 CZ3968 (16:10 - 18:15)，浦东机场-黄花机场。双人经济舱。有正餐。</div>
+                </div>
+                <div class="zhangdan-jine">¥ 983.00</div>
+            </div>
+
+            <div class="zhangdan-xiangmu">
+                <div>
+                    <div><span class="zhangdan-lei">住宿</span><span class="zhangdan-mingcheng">06.11 - 06.12 (1晚)</span></div>
+                    <div class="zhangdan-beizhu">白玉兰酒店（宁波天一广场火车站店，南站西路199号）。房型：精选双床房。无餐食。</div>
+                </div>
+                <div class="zhangdan-jine">¥ 222.00</div>
+            </div>
+
+            <div class="zhangdan-xiangmu">
+                <div>
+                    <div><span class="zhangdan-lei">住宿</span><span class="zhangdan-mingcheng">06.12 - 06.14 (2晚)</span></div>
+                    <div class="zhangdan-beizhu">嵊泗枸杞岛瀚海居（石浦村奇观南路133号）。房型：海景双床房。无餐食。</div>
+                </div>
+                <div class="zhangdan-jine">¥ 890.68</div>
+            </div>
+
+            <div class="zhangdan-xiangmu">
+                <div>
+                    <div><span class="zhangdan-lei">住宿</span><span class="zhangdan-mingcheng">06.14 - 06.16 (2晚)</span></div>
+                    <div class="zhangdan-beizhu">微凉酒店（同济大学国权路地铁站店，四平路1931号）。房型：标准双床房。无餐食。提供现磨咖啡。</div>
+                </div>
+                <div class="zhangdan-jine">¥ 420.00</div>
+            </div>
+
+        </div>
+
+        <div class="ka-pian zongji-ka">
+            <div class="zongji-neirong">
+                <div class="zongji-wenzi">总计</div>
+                <div class="zongji-jine">¥ 4,400.68</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // 初始化系统默认主题：日间
+        document.documentElement.setAttribute('data-theme', 'light');
+
+        let ditu;
+        let dituWapian;
+
+        function fuzhiDizhi(wenziben) {
+            navigator.clipboard.writeText(wenziben).then(() => {
+                alert('系统提示：地址已成功复制至剪贴板。\n' + wenziben);
+            }).catch(() => {
+                const linshiShuru = document.createElement('textarea');
+                linshiShuru.value = wenziben;
+                document.body.appendChild(linshiShuru);
+                linshiShuru.select();
+                document.execCommand('copy');
+                document.body.removeChild(linshiShuru);
+                alert('系统提示：地址已复制。\n' + wenziben);
+            });
+        }
+
+        // 一键无缝切换日夜间模式函数
+        function qiehuanMoshi() {
+            const dangqianMoshi = document.documentElement.getAttribute('data-theme');
+            const btn = document.getElementById('themeBtn');
+            
+            if (dangqianMoshi === 'light') {
+                // 切换到暗黑模式
+                document.documentElement.setAttribute('data-theme', 'dark');
+                btn.innerHTML = '☀️ 日间';
+                
+                // 地图同步切换为高德暗黑夜间底图(style=8)
+                if (ditu && dituWapian) {
+                    ditu.removeLayer(dituWapian);
+                    dituWapian = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+                        subdomains: ["1", "2", "3", "4"]
+                    }).addTo(ditu);
+                }
+            } else {
+                // 切换到日间模式
+                document.documentElement.setAttribute('data-theme', 'light');
+                btn.innerHTML = '🌙 夜间';
+                
+                // 地图同步切换为高德浅色路网底图(style=7)
+                if (ditu && dituWapian) {
+                    ditu.removeLayer(dituWapian);
+                    dituWapian = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}', {
+                        subdomains: ["1", "2", "3", "4"]
+                    }).addTo(ditu);
+                }
+            }
+        }
+
+        window.onload = function() {
+            const jiedian = {
+                '宁波市': [29.868, 121.544],
+                '枸杞岛(目的地)': [30.722, 122.775],
+                '嵊泗(泗礁中转点)': [30.725, 122.450],
+                '上海市': [31.230, 121.473]
+            };
+
+            ditu = L.map('ditu-rongqi', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([30.5, 122.0], 7);
+
+            // 初始化载入浅色优雅底图
+            dituWapian = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}', {
+                subdomains: ["1", "2", "3", "4"]
+            }).addTo(ditu);
+
+            for (let jian in jiedian) {
+                const fangxiang = (jian === '枸杞岛(目的地)') ? 'right' : 'left';
+                
+                L.circleMarker(jiedian[jian], {
+                    radius: 5,
+                    color: '#0a7470',
+                    fillColor: '#ffffff',
+                    fillOpacity: 1,
+                    weight: 2
+                }).addTo(ditu).bindTooltip(jian, { 
+                    permanent: true, 
+                    direction: fangxiang, 
+                    className: 'ditu-biaoqian' 
+                });
+            }
+
+            const guijiZuobiao = [
+                jiedian['宁波市'],
+                jiedian['枸杞岛(目的地)'],
+                jiedian['嵊泗(泗礁中转点)'],
+                jiedian['上海市']
+            ];
+
+            L.polyline(guijiZuobiao, {
+                color: '#0a7470',
+                weight: 3,
+                opacity: 0.8,
+                dashArray: '5, 5'
+            }).addTo(ditu);
+        };
+    </script>
+</body>
+</html>
